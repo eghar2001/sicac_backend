@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -16,7 +17,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required',  Password::defaults()],
-            'role' => ['sometimes', 'string', 'max:255'],
+            'role' => ['sometimes', 'string', Rule::in(config('app.accepted_roles', []))],
         ]);
 
         $user = User::create([
@@ -67,5 +68,39 @@ class AuthController extends Controller
         return response()->json([
             'user' => $request->user(),
         ]);
+    }
+
+    public function createAdmin(Request $request)
+    {
+        $adminExists = User::where('role', 'admin')->exists();
+
+        if ($adminExists) {
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            if ($user->role !== 'admin') {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', Password::defaults()],
+        ]);
+
+        $admin = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => 'admin',
+            'password' => $validated['password'],
+        ]);
+
+        return response()->json([
+            'user' => $admin,
+        ], 201);
     }
 }
