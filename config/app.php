@@ -13,6 +13,7 @@ return [
     |
     */
 
+    'accepted_roles'=>['admin','user','technician'],
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
