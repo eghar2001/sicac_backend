@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -15,7 +15,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required',  Password::defaults()],
             'role' => ['sometimes', 'string', 'max:255'],
         ]);
 
@@ -26,13 +26,7 @@ class AuthController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $plainToken = Str::random(60);
-        $user->api_token = hash('sha256', $plainToken);
-        $user->save();
-
         return response()->json([
-            'token' => $plainToken,
-            'token_type' => 'Bearer',
             'user' => $user,
         ], 201);
     }
@@ -40,27 +34,32 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required','email'],
+            'password' => ['required','string'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
-
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json([
-                'message' => 'Invalid credentials.',
-            ], 401);
+        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
         }
 
-        $plainToken = Str::random(60);
-        $user->api_token = hash('sha256', $plainToken);
-        $user->save();
+        $request->session()->regenerate();
 
         return response()->json([
-            'token' => $plainToken,
-            'token_type' => 'Bearer',
-            'user' => $user,
+            'ok' => true,
+            'user' => $request->user(),
         ]);
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::guard('web')->logout();   // force session guard
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json(['ok' => true]);
     }
 
     public function user(Request $request)
