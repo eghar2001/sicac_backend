@@ -46,4 +46,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // Un usuario (con rol 'technician') tiene un perfil de técnico asociado
+    public function technicianProfile()
+    {
+        return $this->hasOne(Technician::class);
+    }
 }
