@@ -8,6 +8,7 @@ use App\Http\Controllers\ProductFilterController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SubfamilyController;
 use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\TechnicianRequestController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -17,6 +18,7 @@ Route::post('/admin/login', [AuthController::class, 'adminLogin']);
 Route::post('/create-admin', [AuthController::class, 'createAdmin']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(middleware: 'auth:sanctum');
 Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
+Route::post('/technician-requests', [TechnicianRequestController::class, 'startTechnicianRequest'])->middleware('auth:sanctum');
 
 
 Route::resource('technician', TechnicianController::class);
