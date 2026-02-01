@@ -7,10 +7,19 @@ use Illuminate\Http\Request;
 
 class TechnicianController extends Controller
 {
+    use \App\Http\Traits\CanLoadRelationship;
+
+    protected $relations = ['availableShifts'];
+
+    public function __construct()
+    {
+        $this->authorizeResource(Technician::class, 'technician');
+    }
+
     //GETALL
     public function index()
     {
-        $technicians = Technician::with('user')->get();
+        $technicians = $this->loadRelationship(Technician::with('user'))->get();
         return response()->json($technicians);
     }
 
@@ -34,7 +43,7 @@ class TechnicianController extends Controller
     //GET BY ID
     public function show(string $id)
     {
-        $technician = Technician::with('user')->findOrFail($id);
+        $technician = $this->loadRelationship(Technician::with('user')->where('id', $id))->firstOrFail();
         return response()->json($technician);
     }
 

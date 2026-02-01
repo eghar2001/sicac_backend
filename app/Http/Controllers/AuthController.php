@@ -16,14 +16,13 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required',  Password::defaults()],
-            'role' => ['sometimes', 'string', Rule::in(config('app.accepted_roles', []))],
+            'password' => ['required', Password::defaults()],
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'role' => $validated['role'] ?? 'user',
+            'role' => 'user',
             'password' => $validated['password'],
         ]);
 
@@ -35,8 +34,8 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required','email'],
-            'password' => ['required','string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
         ]);
 
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
