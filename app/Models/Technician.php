@@ -11,6 +11,8 @@ class Technician extends Model
         'availability_date'
     ];
 
+
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -19,5 +21,15 @@ class Technician extends Model
     public function availableShifts()
     {
         return $this->hasMany(AvailableShift::class);
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(Claim::class, 'assigned_technician_id');
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
     }
 }
