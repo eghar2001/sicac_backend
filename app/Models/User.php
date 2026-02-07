@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, \App\Traits\HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -20,6 +20,10 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'dni',
+        'phone',
+        'address',
+        'city',
         'role',
         'address',
         'phone_number',
@@ -48,5 +52,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Un usuario (con rol 'technician') tiene un perfil de técnico asociado
+    public function technicianProfile()
+    {
+        return $this->hasOne(Technician::class);
     }
 }

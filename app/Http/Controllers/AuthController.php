@@ -19,7 +19,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'role' => $validated['role'] ?? 'user',
+            'role' => 'user',
             'password' => $validated['password'],
             'address' => $validated['address'],
             'phone_number' => $validated['phone_number'],
@@ -32,58 +32,6 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $request->session()->regenerate();
-
-        return response()->json([
-            'ok' => true,
-            'user' => $request->user(),
-        ]);
-    }
-
-    public function adminLogin(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
-
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        if ($request->user()->role !== 'admin') {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $request->session()->regenerate();
-
-        return response()->json([
-            'ok' => true,
-            'user' => $request->user(),
-        ]);
-    }
-
-    public function technicianLogin(Request $request)
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
