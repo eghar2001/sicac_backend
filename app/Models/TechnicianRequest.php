@@ -40,4 +40,10 @@ class TechnicianRequest extends Model
     {
         return $this->belongsTo(User::class, 'technician_id');
     }
+
+    public function review()
+    {
+        return $this->hasOne(Rating::class, 'technician_request_id');
+    }
 }
+

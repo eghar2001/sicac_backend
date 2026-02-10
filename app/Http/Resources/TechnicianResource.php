@@ -16,6 +16,10 @@ class TechnicianResource extends JsonResource
         $firstName = $parts[0] ?? '';
         $lastName = $parts[1] ?? '';
 
+        // compute average rating and count
+        $average = $this->ratings()->avg('score') ?: 0;
+        $count = $this->ratings()->count();
+
         return [
             'id' => $this->id,
             'first_name' => $firstName,
@@ -27,6 +31,8 @@ class TechnicianResource extends JsonResource
             'address' => $user->address ?? '',
             'city' => $user->city ?? '',
             'availability_date' => $this->availability_date,
+            'average_rating' => round($average, 1),
+            'reviews_count' => $count,
         ];
     }
 }

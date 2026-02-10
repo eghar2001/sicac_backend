@@ -9,6 +9,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SubfamilyController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\TechnicianRequestController;
+use App\Http\Controllers\RatingController;
+use App\Http\Controllers\RatingSummaryController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -19,3 +21,7 @@ Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum')
 Route::post('/technician-requests', [TechnicianRequestController::class, 'startTechnicianRequest'])->middleware('auth:sanctum');
 
 Route::apiResource('technicians', TechnicianController::class);
+
+Route::post('/technicians/{technician}/reviews', [RatingController::class, 'store'])->middleware('auth:sanctum');
+
+Route::get('/ratings', [RatingSummaryController::class, 'index']);
