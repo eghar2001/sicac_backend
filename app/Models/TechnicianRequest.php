@@ -10,6 +10,8 @@ class TechnicianRequest extends Model
         'requesting_user_id',
         'technician_id',
         'category_id',
+        'type',
+        'status',
         'subject',
         'description',
         'wanted_date_start',
@@ -38,7 +40,7 @@ class TechnicianRequest extends Model
 
     public function technician()
     {
-        return $this->belongsTo(User::class, 'technician_id');
+        return $this->belongsTo(Technician::class);
     }
 
     public function review()

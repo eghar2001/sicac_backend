@@ -18,7 +18,37 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/create-admin', [AuthController::class, 'createAdmin']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(middleware: 'auth:sanctum');
 Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
-Route::post('/technician-requests', [TechnicianRequestController::class, 'startTechnicianRequest'])->middleware('auth:sanctum');
+Route::middleware('auth:sanctum')->group(function () {
+    // Usuarios: crear solicitudes técnicas
+    Route::post('/technician-requests', [TechnicianRequestController::class, 'store']);
+    
+    // Usuarios: ver sus solicitudes creadas
+    Route::get('/technician-requests/user-requests', [TechnicianRequestController::class, 'userRequests']);
+    
+    // Admins: obtener todas las solicitudes (con filtros opcionales)
+    Route::get('/technician-requests/admin/all', [TechnicianRequestController::class, 'index']);
+    
+    // Admins: obtener estadísticas
+    Route::get('/technician-requests/admin/stats', [TechnicianRequestController::class, 'stats']);
+    
+    // Technicians: ver solicitudes disponibles (sin técnico asignado)
+    Route::get('/technician-requests/unassigned', [TechnicianRequestController::class, 'unassignedRequests']);
+    
+    // Technicians: asignarse a sí mismo una solicitud sin técnico
+    Route::patch('/technician-requests/{technicianRequest}/assign-to-myself', [TechnicianRequestController::class, 'assignToMyself']);
+    
+    // Technicians: ver sus solicitudes asignadas
+    Route::get('/technician-requests/my-requests', [TechnicianRequestController::class, 'myRequests']);
+    
+    // Technicians: actualizar estado de una solicitud
+    Route::patch('/technician-requests/{technicianRequest}/status', [TechnicianRequestController::class, 'updateStatus']);
+    
+    // Admins: actualizar cualquier campo de una solicitud
+    Route::patch('/technician-requests/{technicianRequest}', [TechnicianRequestController::class, 'update']);
+    
+    // Admins: eliminar una solicitud
+    Route::delete('/technician-requests/{technicianRequest}', [TechnicianRequestController::class, 'destroy']);
+});
 
 Route::apiResource('technicians', TechnicianController::class);
 
