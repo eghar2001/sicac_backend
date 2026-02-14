@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class TechnicianRequestController extends Controller
 {
-    public function startTechnicianRequest(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
