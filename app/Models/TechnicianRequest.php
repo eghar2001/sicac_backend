@@ -43,9 +43,24 @@ class TechnicianRequest extends Model
         return $this->belongsTo(Technician::class);
     }
 
-    public function review()
+    public function rating()
     {
         return $this->hasOne(Rating::class, 'technician_request_id');
     }
-}
 
+    public function isUser(User $user): bool
+    {
+        return (int) $this->requesting_user_id === (int) $user->id;
+    }
+
+    public function isTechnician(Technician $technician): bool
+    {
+        return $this->technician_id !== null
+            && (int) $this->technician_id === (int) $technician->id;
+    }
+
+    public function hasRating(): bool
+    {
+        return $this->rating()->exists();
+    }
+}

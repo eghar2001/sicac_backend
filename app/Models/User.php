@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, \App\Traits\HasRoles;
+    use HasFactory, Notifiable, \App\Traits\HasAuthorization;
 
     /**
      * The attributes that are mass assignable.
@@ -58,9 +58,8 @@ class User extends Authenticatable
         return $this->hasOne(Technician::class);
     }
 
-    public function reviews()
+    public function ratings()
     {
         return $this->hasMany(Rating::class, 'user_id');
     }
 }
-

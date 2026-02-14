@@ -4,7 +4,7 @@ namespace App\Traits;
 
 use App\Models\User;
 
-trait HasRoles
+trait HasAuthorization
 {
     /**
      * Check if the user has any of the given roles.
