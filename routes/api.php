@@ -9,6 +9,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SubfamilyController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\TechnicianRequestController;
+use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RatingSummaryController;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,27 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Admins: eliminar una solicitud
     Route::delete('/technician-requests/{technicianRequest}', [TechnicianRequestController::class, 'destroy']);
+
+    // Usuarios: crear reclamos
+    Route::post('/claims', [ClaimController::class, 'store']);
+
+    // Usuarios: ver sus reclamos
+    Route::get('/claims/user-claims', [ClaimController::class, 'userClaims']);
+
+    // Admins: obtener todos los reclamos
+    Route::get('/claims/admin/all', [ClaimController::class, 'index']);
+
+    // Admins: obtener estadísticas de reclamos
+    Route::get('/claims/admin/stats', [ClaimController::class, 'stats']);
+
+    // Admins: actualizar estado de un reclamo
+    Route::patch('/claims/{claim}/status', [ClaimController::class, 'updateStatus']);
+
+    // Admins: actualizar reclamo
+    Route::patch('/claims/{claim}', [ClaimController::class, 'update']);
+
+    // Admins: eliminar reclamo
+    Route::delete('/claims/{claim}', [ClaimController::class, 'destroy']);
 });
 
 Route::apiResource('technicians', TechnicianController::class);

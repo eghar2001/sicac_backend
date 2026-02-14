@@ -23,11 +23,6 @@ class Technician extends Model
         return $this->hasMany(AvailableShift::class);
     }
 
-    public function claims()
-    {
-        return $this->hasMany(Claim::class, 'assigned_technician_id');
-    }
-
     public function ratings()
     {
         return $this->hasMany(Rating::class);

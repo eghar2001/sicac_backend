@@ -37,21 +37,16 @@ class TechnicianRequestController extends Controller
             }
 
             // Obtener filtros opcionales
-            $type = $request->query('type'); // technical_service, claim
             $status = $request->query('status'); // pending, assigned, completed, cancelled
             $technicianId = $request->query('technician_id');
             $search = $request->query('search');
 
             $query = TechnicianRequest::query()
-                ->with('requestingUser', 'technician', 'category')
+                ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
+                ->with('requestingUser', 'technician', 'category', 'claim')
                 ->orderBy('created_at', 'desc');
 
             // Aplicar filtros
-            if ($type) {
-                Log::debug('TechnicianRequest.index: Filtrando por type', ['type' => $type]);
-                $query->where('type', $type);
-            }
-
             if ($status) {
                 Log::debug('TechnicianRequest.index: Filtrando por status', ['status' => $status]);
                 $query->where('status', $status);
@@ -64,8 +59,10 @@ class TechnicianRequestController extends Controller
 
             if ($search) {
                 Log::debug('TechnicianRequest.index: Buscando por texto', ['search' => $search]);
-                $query->where('subject', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('subject', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
             }
 
             $requests = $query->get();
@@ -74,7 +71,6 @@ class TechnicianRequestController extends Controller
                 'user_id' => $userId,
                 'requests_count' => $requests->count(),
                 'filters' => [
-                    'type' => $type,
                     'status' => $status,
                     'technician_id' => $technicianId,
                     'search' => $search,
@@ -121,19 +117,15 @@ class TechnicianRequestController extends Controller
             }
 
             $stats = [
-                'total' => TechnicianRequest::count(),
+                'total' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->count(),
                 'by_status' => [
-                    'pending' => TechnicianRequest::where('status', 'pending')->count(),
-                    'assigned' => TechnicianRequest::where('status', 'assigned')->count(),
-                    'completed' => TechnicianRequest::where('status', 'completed')->count(),
-                    'cancelled' => TechnicianRequest::where('status', 'cancelled')->count(),
+                    'pending' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->where('status', TechnicianRequest::STATUS_PENDING)->count(),
+                    'assigned' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->where('status', TechnicianRequest::STATUS_ASSIGNED)->count(),
+                    'completed' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->where('status', TechnicianRequest::STATUS_COMPLETED)->count(),
+                    'cancelled' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->where('status', TechnicianRequest::STATUS_CANCELLED)->count(),
                 ],
-                'by_type' => [
-                    'technical_service' => TechnicianRequest::where('type', 'technical_service')->count(),
-                    'claim' => TechnicianRequest::where('type', 'claim')->count(),
-                ],
-                'without_technician' => TechnicianRequest::whereNull('technician_id')->count(),
-                'with_technician' => TechnicianRequest::whereNotNull('technician_id')->count(),
+                'without_technician' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->whereNull('technician_id')->count(),
+                'with_technician' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->whereNotNull('technician_id')->count(),
             ];
 
             Log::info('TechnicianRequest.stats: ✅ Estadísticas obtenidas exitosamente', [
@@ -154,7 +146,7 @@ class TechnicianRequestController extends Controller
     }
 
     /**
-     * Crear una nueva solicitud técnica o reclamo (CREATE)
+     * Crear una nueva solicitud técnica (CREATE)
      */
     public function store(Request $request)
     {
@@ -165,20 +157,10 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            $validatedData = $request->validate([
-                'technician_id' => 'nullable|exists:technicians,id',
-                'category_id' => 'nullable|exists:categories,id',
-                'type' => 'required|in:technical_service,claim',
-                'subject' => 'required|string|max:255',
-                'description' => 'required|string',
-                'wanted_date_start' => 'required|date',
-                'wanted_date_end' => 'required|date|after_or_equal:wanted_date_start',
-                'time_shift' => 'required|string',
-            ]);
+            $validatedData = $request->validate(TechnicianRequest::storeRules());
 
             Log::debug('TechnicianRequest.store: Validación exitosa', [
                 'user_id' => $userId,
-                'type' => $validatedData['type'],
                 'category_id' => $validatedData['category_id'] ?? null,
             ]);
 
@@ -186,8 +168,9 @@ class TechnicianRequestController extends Controller
                 'requesting_user_id' => $userId,
                 'technician_id' => $validatedData['technician_id'] ?? null,
                 'category_id' => $validatedData['category_id'] ?? null,
-                'type' => $validatedData['type'],
-                'status' => 'pending',
+                'claim_id' => $validatedData['claim_id'] ?? null,
+                'type' => TechnicianRequest::TYPE_TECHNICAL_SERVICE,
+                'status' => TechnicianRequest::STATUS_PENDING,
                 'subject' => $validatedData['subject'],
                 'description' => $validatedData['description'],
                 'wanted_date_start' => $validatedData['wanted_date_start'],
@@ -198,13 +181,12 @@ class TechnicianRequestController extends Controller
             Log::info('TechnicianRequest.store: ✅ Solicitud creada exitosamente', [
                 'user_id' => $userId,
                 'technician_request_id' => $technicianRequest->id,
-                'type' => $technicianRequest->type,
                 'status' => $technicianRequest->status,
             ]);
 
             return response()->json([
                 'message' => 'Solicitud creada correctamente',
-                'data' => $technicianRequest->load('requestingUser', 'technician', 'category'),
+                'data' => $technicianRequest->load('requestingUser', 'technician', 'category', 'claim'),
             ], 201);
         } catch (\Exception $e) {
             Log::error('TechnicianRequest.store: ❌ Error al crear solicitud', [
@@ -228,7 +210,8 @@ class TechnicianRequestController extends Controller
 
         try {
             $requests = TechnicianRequest::where('requesting_user_id', $userId)
-                ->with('technician', 'category')
+                ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
+                ->with('technician', 'category', 'claim')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -276,9 +259,10 @@ class TechnicianRequestController extends Controller
             }
 
             $requests = TechnicianRequest::whereNull('technician_id')
-                ->where('status', '=', 'pending')
+                ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
+                ->where('status', TechnicianRequest::STATUS_PENDING)
                 ->orderBy('created_at', 'desc')
-                ->with('requestingUser', 'category')
+                ->with('requestingUser', 'category', 'claim')
                 ->get();
 
             Log::info('TechnicianRequest.unassignedRequests: ✅ Solicitudes disponibles obtenidas exitosamente', [
@@ -338,7 +322,8 @@ class TechnicianRequestController extends Controller
             }
 
             $requests = TechnicianRequest::where('technician_id', $technician->id)
-                ->with('requestingUser', 'category')
+                ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
+                ->with('requestingUser', 'category', 'claim')
                 ->get();
 
             Log::info('TechnicianRequest.myRequests: ✅ Solicitudes obtenidas exitosamente', [
@@ -366,6 +351,10 @@ class TechnicianRequestController extends Controller
     {
         $user = Auth::user();
         $userId = $user->id;
+
+        if ($response = $this->ensureTechnicalService($technicianRequest)) {
+            return $response;
+        }
 
         Log::info('TechnicianRequest.updateStatus: Intento de actualizar estado', [
             'user_id' => $userId,
@@ -405,9 +394,7 @@ class TechnicianRequestController extends Controller
                 }
             }
 
-            $validatedData = $request->validate([
-                'status' => 'required|in:pending,assigned,completed,cancelled',
-            ]);
+            $validatedData = $request->validate(TechnicianRequest::statusUpdateRules());
 
             Log::debug('TechnicianRequest.updateStatus: Validación exitosa', [
                 'user_id' => $userId,
@@ -428,7 +415,7 @@ class TechnicianRequestController extends Controller
 
             return response()->json([
                 'message' => 'Estado actualizado correctamente',
-                'data' => $technicianRequest->load('requestingUser', 'technician', 'category'),
+                'data' => $technicianRequest->load('requestingUser', 'technician', 'category', 'claim'),
             ], 200);
         } catch (\Exception $e) {
             Log::error('TechnicianRequest.updateStatus: ❌ Error al actualizar estado', [
@@ -468,26 +455,11 @@ class TechnicianRequestController extends Controller
                 ], 403);
             }
 
-            // Validación condicional según el tipo
-            $baseRules = [
-                'type' => 'sometimes|in:technical_service,claim',
-                'subject' => 'sometimes|string|max:255',
-                'description' => 'sometimes|string',
-                'category_id' => 'nullable|exists:categories,id',
-                'status' => 'sometimes|in:pending,assigned,completed,cancelled',
-                'technician_id' => 'nullable|exists:technicians,id',
-            ];
-
-            $rules = $baseRules;
-            if ($request->has('type') && $request->input('type') === 'technical_service') {
-                $rules = array_merge($rules, [
-                    'wanted_date_start' => 'nullable|date',
-                    'wanted_date_end' => 'nullable|date|after_or_equal:wanted_date_start',
-                    'time_shift' => 'nullable|string|in:morning,afternoon',
-                ]);
+            if ($response = $this->ensureTechnicalService($technicianRequest)) {
+                return $response;
             }
 
-            $validatedData = $request->validate($rules);
+            $validatedData = $request->validate(TechnicianRequest::updateRules());
 
             Log::debug('TechnicianRequest.update: Validación exitosa', [
                 'user_id' => $userId,
@@ -506,7 +478,7 @@ class TechnicianRequestController extends Controller
 
             return response()->json([
                 'message' => 'Solicitud actualizada correctamente',
-                'data' => $technicianRequest->load('requestingUser', 'technician', 'category'),
+                'data' => $technicianRequest->load('requestingUser', 'technician', 'category', 'claim'),
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('TechnicianRequest.update: ⚠️ Error de validación', [
@@ -532,6 +504,10 @@ class TechnicianRequestController extends Controller
     {
         $user = Auth::user();
         $userId = $user->id;
+
+        if ($response = $this->ensureTechnicalService($technicianRequest)) {
+            return $response;
+        }
 
         Log::info('TechnicianRequest.assignToMyself: Intento de asignarse una solicitud', [
             'user_id' => $userId,
@@ -581,7 +557,7 @@ class TechnicianRequestController extends Controller
             }
 
             // Verificar que la solicitud está en estado pending
-            if ($technicianRequest->status !== 'pending') {
+            if ($technicianRequest->status !== TechnicianRequest::STATUS_PENDING) {
                 Log::warning('TechnicianRequest.assignToMyself: ⚠️ Solicitud no está en estado pending', [
                     'user_id' => $userId,
                     'technician_id' => $technician->id,
@@ -597,19 +573,19 @@ class TechnicianRequestController extends Controller
             // Asignar la solicitud al technician y cambiar estado a assigned
             $technicianRequest->update([
                 'technician_id' => $technician->id,
-                'status' => 'assigned',
+                'status' => TechnicianRequest::STATUS_ASSIGNED,
             ]);
 
             Log::info('TechnicianRequest.assignToMyself: ✅ Solicitud asignada exitosamente', [
                 'user_id' => $userId,
                 'technician_id' => $technician->id,
                 'technician_request_id' => $technicianRequest->id,
-                'new_status' => 'assigned',
+                'new_status' => TechnicianRequest::STATUS_ASSIGNED,
             ]);
 
             return response()->json([
                 'message' => 'Te has asignado la solicitud correctamente',
-                'data' => $technicianRequest->load('requestingUser', 'technician', 'category'),
+                'data' => $technicianRequest->load('requestingUser', 'technician', 'category', 'claim'),
             ], 200);
         } catch (\Exception $e) {
             Log::error('TechnicianRequest.assignToMyself: ❌ Error al asignarse la solicitud', [
@@ -628,6 +604,10 @@ class TechnicianRequestController extends Controller
     {
         $user = Auth::user();
         $userId = $user->id;
+
+        if ($response = $this->ensureTechnicalService($technicianRequest)) {
+            return $response;
+        }
 
         Log::info('TechnicianRequest.destroy: Intento de eliminar solicitud', [
             'user_id' => $userId,
@@ -672,5 +652,16 @@ class TechnicianRequestController extends Controller
             ]);
             throw $e;
         }
+    }
+
+    private function ensureTechnicalService(TechnicianRequest $technicianRequest)
+    {
+        if ($technicianRequest->type !== TechnicianRequest::TYPE_TECHNICAL_SERVICE) {
+            return response()->json([
+                'message' => 'Solicitud técnica no encontrada',
+            ], 404);
+        }
+
+        return null;
     }
 }

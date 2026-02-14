@@ -62,4 +62,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Rating::class, 'user_id');
     }
+
+    public function claims()
+    {
+        return $this->hasMany(Claim::class, 'requesting_user_id');
+    }
 }
