@@ -134,25 +134,7 @@ class AuthController extends Controller
         ]);
 
         try {
-            $adminExists = User::where('role', 'admin')->exists();
-
-            if ($adminExists) {
-                $user = $request->user();
-
-                if (!$user) {
-                    Log::warning('Admin creation failed - unauthenticated', ['ip' => $request->ip()]);
-                    return response()->json(['message' => 'Unauthenticated.'], 401);
-                }
-
-                if ($user->role !== 'admin') {
-                    Log::warning('Admin creation forbidden - insufficient permissions', [
-                        'requester_id' => $user->id,
-                        'requester_role' => $user->role,
-                        'ip' => $request->ip(),
-                    ]);
-                    return response()->json(['message' => 'Forbidden.'], 403);
-                }
-            }
+            $this->authorize('createAdmin', User::class);
 
             $validated = $request->validated();
 
