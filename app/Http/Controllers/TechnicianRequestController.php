@@ -24,17 +24,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un admin
-            if ($user->role !== 'admin') {
-                Log::warning('TechnicianRequest.index: ⚠️ Acceso denegado - Usuario no es admin', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para acceder a este recurso',
-                ], 403);
-            }
+            $this->authorize('viewAny', TechnicianRequest::class);
 
             // Obtener filtros opcionales
             $status = $request->query('status'); // pending, assigned, completed, cancelled
@@ -104,17 +94,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un admin
-            if ($user->role !== 'admin') {
-                Log::warning('TechnicianRequest.stats: ⚠️ Acceso denegado - Usuario no es admin', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para acceder a este recurso',
-                ], 403);
-            }
+            $this->authorize('viewStats', TechnicianRequest::class);
 
             $stats = [
                 'total' => TechnicianRequest::where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)->count(),
@@ -157,6 +137,8 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
+            $this->authorize('create', TechnicianRequest::class);
+
             $validatedData = $request->validate(TechnicianRequest::storeRules());
 
             Log::debug('TechnicianRequest.store: Validación exitosa', [
@@ -209,6 +191,8 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
+            $this->authorize('viewOwn', TechnicianRequest::class);
+
             $requests = TechnicianRequest::where('requesting_user_id', $userId)
                 ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
                 ->with('technician', 'category', 'claim')
@@ -246,17 +230,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un technician
-            if ($user->role !== 'technician') {
-                Log::warning('TechnicianRequest.unassignedRequests: ⚠️ Acceso denegado - Usuario no es technician', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para acceder a este recurso',
-                ], 403);
-            }
+            $this->authorize('viewUnassigned', TechnicianRequest::class);
 
             $requests = TechnicianRequest::whereNull('technician_id')
                 ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
@@ -296,30 +270,9 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un technician
-            if ($user->role !== 'technician') {
-                Log::warning('TechnicianRequest.myRequests: ⚠️ Acceso denegado - Usuario no es technician', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                ]);
+            $this->authorize('viewMyRequests', TechnicianRequest::class);
 
-                return response()->json([
-                    'message' => 'No tienes permisos para acceder a este recurso',
-                ], 403);
-            }
-
-            // Obtener el technician asociado al usuario autenticado
-            $technician = Technician::where('user_id', $userId)->first();
-
-            if (!$technician) {
-                Log::warning('TechnicianRequest.myRequests: ⚠️ Technician no encontrado', [
-                    'user_id' => $userId,
-                ]);
-
-                return response()->json([
-                    'message' => 'No eres un technician registrado',
-                ], 404);
-            }
+            $technician = Technician::where('user_id', $userId)->firstOrFail();
 
             $requests = TechnicianRequest::where('technician_id', $technician->id)
                 ->where('type', TechnicianRequest::TYPE_TECHNICAL_SERVICE)
@@ -364,35 +317,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un technician o admin
-            if ($user->role !== 'technician' && $user->role !== 'admin') {
-                Log::warning('TechnicianRequest.updateStatus: ⚠️ Acceso denegado - Usuario no autorizado', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                    'technician_request_id' => $technicianRequest->id,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para realizar esta acción',
-                ], 403);
-            }
-
-            // Si es technician, verificar que la solicitud está asignada a él
-            if ($user->role === 'technician') {
-                $technician = Technician::where('user_id', $userId)->first();
-                if (!$technician || $technicianRequest->technician_id !== $technician->id) {
-                    Log::warning('TechnicianRequest.updateStatus: ⚠️ Solicitud no asignada a este technician', [
-                        'user_id' => $userId,
-                        'technician_id' => $technician?->id,
-                        'request_technician_id' => $technicianRequest->technician_id,
-                        'technician_request_id' => $technicianRequest->id,
-                    ]);
-
-                    return response()->json([
-                        'message' => 'Esta solicitud no está asignada a ti',
-                    ], 403);
-                }
-            }
+            $this->authorize('updateStatus', $technicianRequest);
 
             $validatedData = $request->validate(TechnicianRequest::statusUpdateRules());
 
@@ -442,18 +367,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un admin
-            if ($user->role !== 'admin') {
-                Log::warning('TechnicianRequest.update: ⚠️ Acceso denegado - Usuario no es admin', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                    'technician_request_id' => $technicianRequest->id,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para realizar esta acción',
-                ], 403);
-            }
+            $this->authorize('update', $technicianRequest);
 
             if ($response = $this->ensureTechnicalService($technicianRequest)) {
                 return $response;
@@ -516,31 +430,9 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un technician
-            if ($user->role !== 'technician') {
-                Log::warning('TechnicianRequest.assignToMyself: ⚠️ Acceso denegado - Usuario no es technician', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                    'technician_request_id' => $technicianRequest->id,
-                ]);
+            $this->authorize('assignToMyself', $technicianRequest);
 
-                return response()->json([
-                    'message' => 'No tienes permisos para realizar esta acción',
-                ], 403);
-            }
-
-            // Obtener el technician asociado al usuario autenticado
-            $technician = Technician::where('user_id', $userId)->first();
-
-            if (!$technician) {
-                Log::warning('TechnicianRequest.assignToMyself: ⚠️ Technician no encontrado', [
-                    'user_id' => $userId,
-                ]);
-
-                return response()->json([
-                    'message' => 'No eres un technician registrado',
-                ], 404);
-            }
+            $technician = Technician::where('user_id', $userId)->firstOrFail();
 
             // Verificar que la solicitud no tiene technician asignado
             if ($technicianRequest->technician_id !== null) {
@@ -616,18 +508,7 @@ class TechnicianRequestController extends Controller
         ]);
 
         try {
-            // Verificar que el usuario es un admin
-            if ($user->role !== 'admin') {
-                Log::warning('TechnicianRequest.destroy: ⚠️ Acceso denegado - Usuario no es admin', [
-                    'user_id' => $userId,
-                    'user_role' => $user->role,
-                    'technician_request_id' => $technicianRequest->id,
-                ]);
-
-                return response()->json([
-                    'message' => 'No tienes permisos para realizar esta acción',
-                ], 403);
-            }
+            $this->authorize('delete', $technicianRequest);
 
             $requestId = $technicianRequest->id;
             $requestData = $technicianRequest->toArray();

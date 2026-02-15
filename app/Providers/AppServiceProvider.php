@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\Rating;
 use App\Models\Claim;
+use App\Models\TechnicianRequest;
 use App\Policies\RatingPolicy;
 use App\Policies\ClaimPolicy;
+use App\Policies\TechnicianRequestPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +28,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Rating::class, RatingPolicy::class);
         Gate::policy(Claim::class, ClaimPolicy::class);
+        Gate::policy(TechnicianRequest::class, TechnicianRequestPolicy::class);
     }
 }
