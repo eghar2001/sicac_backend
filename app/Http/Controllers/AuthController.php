@@ -60,9 +60,30 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        return $this->loginByRole($request, null);
+    }
+
+    public function loginAdmin(Request $request)
+    {
+        return $this->loginByRole($request, 'admin');
+    }
+
+    public function loginTechnician(Request $request)
+    {
+        return $this->loginByRole($request, 'technician');
+    }
+
+    public function loginUser(Request $request)
+    {
+        return $this->loginByRole($request, 'user');
+    }
+
+    private function loginByRole(Request $request, ?string $role)
+    {
         Log::info('User login attempt', [
             'email' => $request->input('email'),
             'ip' => $request->ip(),
+            'required_role' => $role,
         ]);
 
         try {
@@ -71,10 +92,15 @@ class AuthController extends Controller
                 'password' => ['required', 'string'],
             ]);
 
+            if ($role !== null) {
+                $credentials['role'] = $role;
+            }
+
             if (!Auth::attempt($credentials, $request->boolean('remember'))) {
                 Log::warning('User login failed - invalid credentials', [
                     'email' => $request->input('email'),
                     'ip' => $request->ip(),
+                    'required_role' => $role,
                 ]);
 
                 throw ValidationException::withMessages([
@@ -87,6 +113,7 @@ class AuthController extends Controller
             Log::info('User logged in successfully', [
                 'user_id' => $request->user()->id,
                 'email' => $request->user()->email,
+                'role' => $request->user()->role,
             ]);
 
             return response()->json([
@@ -97,6 +124,7 @@ class AuthController extends Controller
             Log::warning('User login validation error', [
                 'email' => $request->input('email'),
                 'errors' => $e->errors(),
+                'required_role' => $role,
             ]);
             throw $e;
         } catch (\Exception $e) {
@@ -104,6 +132,7 @@ class AuthController extends Controller
                 'email' => $request->input('email'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'required_role' => $role,
             ]);
             throw $e;
         }
