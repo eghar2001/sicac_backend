@@ -65,13 +65,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admins: obtener estadísticas de reclamos
     Route::get('/claims/admin/stats', [ClaimController::class, 'stats']);
 
-    // Admins: actualizar estado de un reclamo
-    Route::patch('/claims/{claim}/status', [ClaimController::class, 'updateStatus']);
-
-    // Admins: actualizar reclamo
+    // Admins: actualizar reclamo (incluye status)
     Route::patch('/claims/{claim}', [ClaimController::class, 'update']);
 
-    // Super admins: responder un reclamo
+    // Admins: responder un reclamo
     Route::patch('/claims/{claim}/answer', [ClaimController::class, 'answer']);
 
     // Admins: eliminar reclamo

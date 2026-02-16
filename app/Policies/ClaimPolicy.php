@@ -22,11 +22,6 @@ class ClaimPolicy
         return $user->isUser() || $user->isAdmin() || $user->isTechnician();
     }
 
-    public function updateStatus(User $user, Claim $claim): bool
-    {
-        return $user->isAdmin();
-    }
-
     public function update(User $user, Claim $claim): bool
     {
         return $user->isAdmin();

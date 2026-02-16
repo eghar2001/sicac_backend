@@ -10,6 +10,7 @@ class Claim extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_ANSWERED = 'answered';
+    public const STATUS_CANCELED_INPUT = 'canceled';
 
     protected $fillable = [
         'requesting_user_id',
@@ -79,14 +80,18 @@ class Claim extends Model
             'subject' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'category_id' => 'sometimes|exists:categories,id',
-            'status' => 'sometimes|in:' . implode(',', self::statuses()),
+            'status' => 'sometimes|in:' . implode(',', [
+                self::STATUS_PENDING,
+                self::STATUS_COMPLETED,
+                self::STATUS_CANCELED_INPUT,
+            ]),
         ];
     }
 
-    public static function statusUpdateRules(): array
+    public static function normalizeUpdatedStatus(string $status): string
     {
-        return [
-            'status' => 'required|in:' . implode(',', self::statuses()),
-        ];
+        return $status === self::STATUS_CANCELED_INPUT
+            ? self::STATUS_CANCELLED
+            : $status;
     }
 }

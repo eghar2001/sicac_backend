@@ -198,50 +198,6 @@ class ClaimController extends Controller
     }
 
     /**
-     * Actualizar estado de reclamo (solo admin) (UPDATE)
-     */
-    public function updateStatus(Request $request, Claim $claim)
-    {
-        $user = Auth::user();
-        $userId = $user->id;
-
-        Log::info('Claim.updateStatus: Intento de actualizar estado', [
-            'user_id' => $userId,
-            'user_role' => $user->role,
-            'claim_id' => $claim->id,
-            'current_status' => $claim->status,
-        ]);
-
-        try {
-            $this->authorize('updateStatus', $claim);
-
-            $validatedData = $request->validate(Claim::statusUpdateRules());
-
-            $oldStatus = $claim->status;
-            $claim->update($validatedData);
-
-            Log::info('Claim.updateStatus: ✅ Estado actualizado exitosamente', [
-                'user_id' => $userId,
-                'claim_id' => $claim->id,
-                'old_status' => $oldStatus,
-                'new_status' => $claim->status,
-            ]);
-
-            return response()->json([
-                'message' => 'Estado actualizado correctamente',
-                'data' => $this->loadRelationship($claim->load('category')),
-            ], 200);
-        } catch (\Exception $e) {
-            Log::error('Claim.updateStatus: ❌ Error al actualizar estado', [
-                'user_id' => $userId,
-                'claim_id' => $claim->id,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
      * Actualizar reclamo (solo admin) (UPDATE)
      */
     public function update(Request $request, Claim $claim)
@@ -259,6 +215,9 @@ class ClaimController extends Controller
             $this->authorize('update', $claim);
 
             $validatedData = $request->validate(Claim::updateRules());
+            if (isset($validatedData['status'])) {
+                $validatedData['status'] = Claim::normalizeUpdatedStatus($validatedData['status']);
+            }
 
             $oldData = $claim->toArray();
             $claim->update($validatedData);
