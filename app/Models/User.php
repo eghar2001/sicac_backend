@@ -6,11 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, \App\Traits\HasRoles;
+    use HasFactory, Notifiable, \App\Traits\HasAuthorization;
 
     /**
      * The attributes that are mass assignable.
@@ -25,9 +26,6 @@ class User extends Authenticatable
         'address',
         'city',
         'role',
-        'address',
-        'phone_number',
-        'city',
         'password',
     ];
 
@@ -58,5 +56,15 @@ class User extends Authenticatable
     public function technicianProfile()
     {
         return $this->hasOne(Technician::class);
+    }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class, 'user_id');
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(Claim::class, 'requesting_user_id');
     }
 }

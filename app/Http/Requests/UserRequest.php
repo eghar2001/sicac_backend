@@ -27,8 +27,9 @@ class UserRequest extends FormRequest
             'password' => ['required', \Illuminate\Validation\Rules\Password::defaults()],
             'role' => ['sometimes', 'string', \Illuminate\Validation\Rule::in(config('app.accepted_roles', []))],
             'address' => ['required', 'string'],
-            'phone_number' => ['required', 'string'],
+            'phone' => ['required', 'string'],
             'city' => ['required', 'string'],
+            'dni'      => 'required|string|unique:users',
         ];
     }
 }

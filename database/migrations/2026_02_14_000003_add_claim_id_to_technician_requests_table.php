@@ -10,10 +10,8 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-           
-            $table->string('address')->default('');
-            $table->string('city')->default('');
+        Schema::table('technician_requests', function (Blueprint $table) {
+            $table->foreignId('claim_id')->nullable()->after('category_id')->constrained('claims')->nullOnDelete();
         });
     }
 
@@ -22,8 +20,9 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['address', 'city']);
+        Schema::table('technician_requests', function (Blueprint $table) {
+            $table->dropForeign(['claim_id']);
+            $table->dropColumn('claim_id');
         });
     }
 };
