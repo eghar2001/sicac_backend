@@ -2,8 +2,6 @@
 
 namespace App\Traits;
 
-use App\Models\User;
-
 trait HasAuthorization
 {
     /**

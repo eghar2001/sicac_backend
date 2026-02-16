@@ -9,6 +9,7 @@ class Claim extends Model
     public const STATUS_PENDING = 'pending';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_ANSWERED = 'answered';
 
     protected $fillable = [
         'requesting_user_id',
@@ -16,6 +17,12 @@ class Claim extends Model
         'status',
         'subject',
         'description',
+        'answer',
+        'answered_at',
+    ];
+
+    protected $casts = [
+        'answered_at' => 'datetime',
     ];
 
     public function category()
@@ -44,7 +51,17 @@ class Claim extends Model
             self::STATUS_PENDING,
             self::STATUS_COMPLETED,
             self::STATUS_CANCELLED,
+            self::STATUS_ANSWERED,
         ];
+    }
+
+    public function setAnswer(?string $answer): bool
+    {
+        $this->answer = $answer;
+        $this->answered_at = now();
+        $this->status = self::STATUS_ANSWERED;
+
+        return $this->save();
     }
 
     public static function storeRules(): array

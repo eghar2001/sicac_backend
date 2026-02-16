@@ -36,4 +36,9 @@ class ClaimPolicy
     {
         return $user->isAdmin();
     }
+
+    public function answer(User $user, Claim $claim): bool
+    {
+        return $user->isAdmin();
+    }
 }

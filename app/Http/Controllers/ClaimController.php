@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\CanLoadRelationship;
 use App\Models\Claim;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -9,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class ClaimController extends Controller
 {
+    use CanLoadRelationship;
+
+    protected array $relations = ['requestingUser'];
+
     /**
      * Obtener todos los reclamos (solo admins) (READ)
      */
@@ -25,11 +30,12 @@ class ClaimController extends Controller
         try {
             $this->authorize('viewAny', Claim::class);
 
-            $status = $request->query('status'); // pending, completed, cancelled
+            $status = $request->query('status'); // pending, completed, cancelled, answered
             $search = $request->query('search');
+            $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
 
             $query = Claim::query()
-                ->with('requestingUser', 'category')
+                ->with('category')
                 ->orderBy('created_at', 'desc');
 
             if ($status) {
@@ -45,17 +51,19 @@ class ClaimController extends Controller
                 });
             }
 
-            $claims = $query->get();
+            $claims = $this->loadRelationship($query)
+                ->paginate($perPage)
+                ->withQueryString();
 
             Log::info('Claim.index: ✅ Reclamos obtenidos exitosamente', [
                 'user_id' => $userId,
                 'claims_count' => $claims->count(),
+                'claims_total' => $claims->total(),
+                'current_page' => $claims->currentPage(),
+                'per_page' => $claims->perPage(),
             ]);
 
-            return response()->json([
-                'data' => $claims,
-                'total' => $claims->count(),
-            ], 200);
+            return response()->json($claims, 200);
         } catch (\Exception $e) {
             Log::error('Claim.index: ❌ Error al obtener reclamos', [
                 'user_id' => $userId,
@@ -87,6 +95,7 @@ class ClaimController extends Controller
                     Claim::STATUS_PENDING => Claim::where('status', Claim::STATUS_PENDING)->count(),
                     Claim::STATUS_COMPLETED => Claim::where('status', Claim::STATUS_COMPLETED)->count(),
                     Claim::STATUS_CANCELLED => Claim::where('status', Claim::STATUS_CANCELLED)->count(),
+                    Claim::STATUS_ANSWERED => Claim::where('status', Claim::STATUS_ANSWERED)->count(),
                 ],
             ];
 
@@ -112,7 +121,8 @@ class ClaimController extends Controller
      */
     public function store(Request $request)
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        $userId = $user->id;
 
         Log::info('Claim.store: Intento de crear reclamo', [
             'user_id' => $userId,
@@ -139,7 +149,7 @@ class ClaimController extends Controller
 
             return response()->json([
                 'message' => 'Reclamo creado correctamente',
-                'data' => $claim->load('requestingUser', 'category'),
+                'data' => $this->loadRelationship($claim->load('category')),
             ], 201);
         } catch (\Exception $e) {
             Log::error('Claim.store: ❌ Error al crear reclamo', [
@@ -164,10 +174,11 @@ class ClaimController extends Controller
         try {
             $this->authorize('viewOwn', Claim::class);
 
-            $claims = Claim::where('requesting_user_id', $userId)
+            $query = Claim::where('requesting_user_id', $userId)
                 ->with('category')
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->orderBy('created_at', 'desc');
+
+            $claims = $this->loadRelationship($query)->get();
 
             Log::info('Claim.userClaims: ✅ Reclamos obtenidos exitosamente', [
                 'user_id' => $userId,
@@ -218,7 +229,7 @@ class ClaimController extends Controller
 
             return response()->json([
                 'message' => 'Estado actualizado correctamente',
-                'data' => $claim->load('requestingUser', 'category'),
+                'data' => $this->loadRelationship($claim->load('category')),
             ], 200);
         } catch (\Exception $e) {
             Log::error('Claim.updateStatus: ❌ Error al actualizar estado', [
@@ -260,7 +271,7 @@ class ClaimController extends Controller
 
             return response()->json([
                 'message' => 'Reclamo actualizado correctamente',
-                'data' => $claim->load('requestingUser', 'category'),
+                'data' => $this->loadRelationship($claim->load('category')),
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Claim.update: ⚠️ Error de validación', [
@@ -271,6 +282,54 @@ class ClaimController extends Controller
             throw $e;
         } catch (\Exception $e) {
             Log::error('Claim.update: ❌ Error al actualizar reclamo', [
+                'user_id' => $userId,
+                'claim_id' => $claim->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function answer(Request $request, Claim $claim)
+    {
+        $user = Auth::user();
+        $userId = $user->id;
+
+        Log::info('Claim.answer: Intento de responder reclamo', [
+            'user_id' => $userId,
+            'user_role' => $user->role,
+            'claim_id' => $claim->id,
+        ]);
+
+        try {
+            $this->authorize('answer', $claim);
+
+            $validatedData = $request->validate([
+                'answer' => 'nullable|string',
+            ]);
+
+            $claim->setAnswer($validatedData['answer'] ?? null);
+
+            Log::info('Claim.answer: ✅ Reclamo respondido exitosamente', [
+                'user_id' => $userId,
+                'claim_id' => $claim->id,
+                'status' => $claim->status,
+                'answered_at' => $claim->answered_at,
+            ]);
+
+            return response()->json([
+                'message' => 'Reclamo respondido correctamente',
+                'data' => $this->loadRelationship($claim->load('category')),
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Claim.answer: ⚠️ Error de validación', [
+                'user_id' => $userId,
+                'claim_id' => $claim->id,
+                'errors' => $e->errors(),
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Claim.answer: ❌ Error al responder reclamo', [
                 'user_id' => $userId,
                 'claim_id' => $claim->id,
                 'error' => $e->getMessage(),

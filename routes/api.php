@@ -71,6 +71,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admins: actualizar reclamo
     Route::patch('/claims/{claim}', [ClaimController::class, 'update']);
 
+    // Super admins: responder un reclamo
+    Route::patch('/claims/{claim}/answer', [ClaimController::class, 'answer']);
+
     // Admins: eliminar reclamo
     Route::delete('/claims/{claim}', [ClaimController::class, 'destroy']);
 });
